@@ -17,3 +17,7 @@ oss-readiness = "oss_readiness.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.urls]
+Repository = "https://github.com/MadhavSekhri/OSS-Readiness"
+Issues = "https://github.com/MadhavSekhri/OSS-Readiness/issues"
