@@ -1,0 +1,81 @@
+name: OSS adoption baseline
+on:
+  push:
+    branches: [audit/oss-adoption-baseline]
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: Agent-Audit-Kit
+            package: agent-audit-kit
+          - repo: OTel-Agent-Observer
+            package: otel-agent-observer
+          - repo: OSS-Readiness
+            package: oss-readiness
+          - repo: PolicyTrace-India
+            package: policytrace-india
+    env:
+      REPO: ${{ matrix.repo }}
+      PACKAGE: ${{ matrix.package }}
+    steps:
+      - name: Check the registry identity and GitHub dependents
+        run: |
+          python3 - <<'PY'
+          import html
+          import json
+          import os
+          import re
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+
+          repo = os.environ["REPO"]
+          package = os.environ["PACKAGE"]
+          expected = f"github.com/madhavsekhri/{repo.lower()}"
+          registry_owned = False
+          try:
+              with urlopen(f"https://pypi.org/pypi/{package}/json", timeout=20) as response:
+                  info = json.load(response)["info"]
+              urls = list((info["project_urls"] or {}).values())
+              if info.get("home_page"):
+                  urls.append(info["home_page"])
+              registry_owned = any(
+                  re.search(rf"^https://{re.escape(expected)}(?:[/?#]|$)", url, re.I)
+                  for url in urls
+              )
+              print("PyPI version:", info["version"], "matching repository URL:", registry_owned)
+          except (HTTPError, URLError, TimeoutError) as error:
+              print("PyPI lookup:", error)
+
+          if registry_owned:
+              try:
+                  with urlopen(f"https://pypistats.org/api/packages/{package}/recent", timeout=20) as response:
+                      print("PyPI download proxy:", json.load(response)["data"])
+              except (HTTPError, URLError, TimeoutError) as error:
+                  print("Download lookup:", error)
+
+          try:
+              req = Request(
+                  f"https://github.com/MadhavSekhri/{repo}/network/dependents",
+                  headers={"User-Agent": "Mozilla/5.0"},
+              )
+              with urlopen(req, timeout=20) as response:
+                  page = response.read().decode()
+              body = html.unescape(re.sub(r"<[^>]+>", " ", page))
+              counts = sorted(set(re.findall(r"\b[0-9][0-9,]*\s+(?:Repositories|Packages)\b", body)))
+              print("GitHub Dependents counts:", counts or "unavailable")
+          except (HTTPError, URLError, TimeoutError) as error:
+              print("GitHub Dependents lookup:", error)
+          PY
+      - name: Run OpenSSF Criticality Score
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          go install github.com/ossf/criticality_score/v2/cmd/criticality_score@v2.0.4
+          "$(go env GOPATH)/bin/criticality_score" -depsdev-disable "https://github.com/MadhavSekhri/$REPO"
