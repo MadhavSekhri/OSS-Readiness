@@ -41,31 +41,6 @@ jobs:
 
 A failing score exits with status 1; the Action also exposes a numeric `score` output. Pin the Action to a reviewed commit SHA or versioned release in production. A high checklist score measures document and CI-file presence, **not code security, maintainer quality, adoption, or AI-credit eligibility**.
 
-## Use as a GitHub Action
-
-Other repositories can run this checklist automatically:
-
-```yaml
-name: OSS documentation check
-on: [push, pull_request]
-permissions:
-  contents: read
-jobs:
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: MadhavSekhri/OSS-Readiness@main
-        with:
-          path: .
-          min-score: '75'
-```
-
-A failing score exits with status 1; the Action also exposes a numeric `score` output. Pin the Action to a reviewed commit SHA or versioned release in production. A high checklist score measures document and CI-file presence, **not code security, maintainer quality, adoption, or AI-credit eligibility**.
-
 ## Tests
 
     python -m unittest discover -s tests -v
