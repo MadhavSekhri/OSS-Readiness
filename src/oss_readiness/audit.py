@@ -3,8 +3,10 @@
 This tool does not execute repository scripts, contact GitHub or certify security.
 """
 import os
+from itertools import islice
 from pathlib import Path
 
+MAX_DIRECTORY_EVIDENCE_FILES = 128
 MAX_TEST_FILES_SCANNED = 256
 MAX_TEST_DEPTH = 5
 MAX_TEST_DIRS_SCANNED = 128
@@ -96,7 +98,7 @@ def _find_tests(base: Path) -> list[str]:
                     if directory not in IGNORED_DIRS and
                     _safe_folder(base, current / directory)
                 )[:MAX_TEST_DIRS_SCANNED - visited_dirs]
-            for filename in sorted(filenames):
+            for filename in sorted(islice(filenames, MAX_TEST_FILES_SCANNED - visited_files)):
                 visited_files += 1
                 candidate = current / filename
                 if _test_filename(filename) and _safe_file(base, candidate):
@@ -115,7 +117,7 @@ def _present(base: Path, check: str, candidates: tuple[str, ...]) -> list[str]:
     if check == "ci":
         workflows = base / ".github" / "workflows"
         if _safe_folder(base, workflows):
-            for candidate in sorted(workflows.iterdir()):
+            for candidate in sorted(islice(workflows.iterdir(), MAX_DIRECTORY_EVIDENCE_FILES), key=lambda entry: entry.name):
                 if candidate.suffix.lower() in {".yml", ".yaml"} and _safe_file(base, candidate):
                     return [_relative(base, candidate)]
         gitlab = base / ".gitlab-ci.yml"
@@ -123,7 +125,7 @@ def _present(base: Path, check: str, candidates: tuple[str, ...]) -> list[str]:
     if check == "issue_template":
         folder = base / ".github" / "ISSUE_TEMPLATE"
         if _safe_folder(base, folder):
-            for candidate in sorted(folder.iterdir()):
+            for candidate in sorted(islice(folder.iterdir(), MAX_DIRECTORY_EVIDENCE_FILES), key=lambda entry: entry.name):
                 if candidate.suffix.lower() in {".md", ".yml", ".yaml"} and _safe_file(base, candidate):
                     return [_relative(base, candidate)]
         return []
