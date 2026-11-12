@@ -54,6 +54,8 @@ jobs:
 
 A failing score exits with status 1; the Action also exposes a numeric `score` output. Pin the Action to a reviewed commit SHA or versioned release in production. A high checklist score measures document and CI-file presence, **not code security, maintainer quality, adoption, or AI-credit eligibility**.
 
+For a downstream workflow that uploads SARIF as an artifact, see the [CI pilot](docs/SARIF_CI_PILOT.md).
+
 ## Tests
 
     python -m unittest discover -s tests -v
