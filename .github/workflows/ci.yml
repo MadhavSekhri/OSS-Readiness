@@ -28,3 +28,33 @@ jobs:
         with:
           path: .
           min-score: '75'
+      - name: Verify remediation removes the SARIF finding
+        shell: bash
+        run: |
+          mkdir pilot-repo
+          status=0
+          oss-readiness pilot-repo --format sarif --min-score 75 > pilot-before.sarif || status=$?
+          test "$status" -eq 1
+          printf '# Security\nReport vulnerabilities privately to the maintainer.\n' > pilot-repo/SECURITY.md
+          oss-readiness pilot-repo --format sarif > pilot-after.sarif
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          def rule_ids(path):
+              run = json.loads(Path(path).read_text())["runs"][0]
+              return {finding["ruleId"] for finding in run["results"]}
+
+          assert "OSS-SECURITY" in rule_ids("pilot-before.sarif")
+          assert "OSS-SECURITY" not in rule_ids("pilot-after.sarif")
+          PY
+      - name: Upload the pilot SARIF reports
+        if: ${{ !cancelled() && hashFiles('pilot-before.sarif') != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pilot-sarif-${{ matrix.python-version }}
+          path: |
+            pilot-before.sarif
+            pilot-after.sarif
+          retention-days: 7
+          if-no-files-found: error
