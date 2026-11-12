@@ -1,0 +1,38 @@
+name: "OSS Readiness Check"
+description: "Check contributor-facing repo documentation and CI hygiene"
+inputs:
+  path:
+    description: "Checked-out repository directory to audit"
+    required: false
+    default: "."
+  min-score:
+    description: "Minimum checklist score required (0–100)"
+    required: false
+    default: "75"
+outputs:
+  score:
+    description: "Observed contributor-readiness checklist points (0–100)"
+    value: ${{ steps.audit.outputs.score }}
+runs:
+  using: "composite"
+  steps:
+    - name: Install OSS Readiness
+      shell: bash
+      run: python -m pip install "$GITHUB_ACTION_PATH"
+    - name: Audit checked-out repository
+      id: audit
+      shell: bash
+      env:
+        OSS_READINESS_PATH: ${{ inputs.path }}
+        OSS_READINESS_MIN_SCORE: ${{ inputs.min-score }}
+      run: |
+        set +e
+        report=$(python -m oss_readiness.cli "$OSS_READINESS_PATH" --json --min-score "$OSS_READINESS_MIN_SCORE")
+        status=$?
+        set -e
+        printf '%s\n' "$report"
+        if [ "$status" -eq 0 ] || [ "$status" -eq 1 ]; then
+          score=$(printf '%s\n' "$report" | python -c "import json,sys; print(json.load(sys.stdin)['score'])")
+          printf 'score=%s\n' "$score" >> "$GITHUB_OUTPUT"
+        fi
+        exit "$status"
