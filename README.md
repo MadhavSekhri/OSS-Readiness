@@ -16,6 +16,19 @@ A local CLI to review whether an open-source repository has basic contributor-fa
 
 This checks README, LICENSE, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, CHANGELOG, .gitignore, CI, tests, and issue/PR templates. The result is a weighted 0–100 checklist score. The tool verifies that files are nonempty, test directories contain test-named files, and CI/issue-template directories contain supported files. That still does not guarantee their quality or that CI runs successfully. `--min-score` makes it usable as a local development gate (exit code 1 if below threshold); the score is not evidence of grant eligibility. The CLI does not access the network, require a token, or modify a repository.
 
+## Structured findings and SARIF output (P1)
+
+Export actionable missing-evidence warnings to a SARIF 2.1.0-compatible report:
+
+    oss-readiness . --format sarif > oss-readiness.sarif
+    oss-readiness . --format json --min-score 75
+
+Each missing check produces a stable rule ID such as OSS-SECURITY and a
+remediation recommendation. The SARIF document contains no absolute
+workspace path or fictional source locations. The --json flag remains
+compatible with the reusable GitHub Action. See
+[reporting guidance](docs/SARIF_REPORTING.md).
+
 ## Use as a GitHub Action
 
 Other repositories can run this checklist automatically:
